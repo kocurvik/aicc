@@ -1,5 +1,6 @@
 import time
 import copy
+import os
 
 import numpy as np
 import cv2
@@ -9,7 +10,9 @@ from fields.interest import get_mask_movements_heatmaps
 
 import matplotlib
 # matplotlib.use('TkAgg')
-matplotlib.use('Qt5Agg')
+
+if os.name == 'nt':
+    matplotlib.use('Qt5Agg')
 from matplotlib import pyplot as plt
 
 class Track(object):
