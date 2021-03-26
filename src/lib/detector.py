@@ -97,7 +97,7 @@ class Detector(object):
             if self.opt.tracking:
                 # initialize the first frame
                 if self.pre_images is None:
-                    print('Initialize tracking!')
+                    # print('Initialize tracking!')
                     self.pre_images = images
                     # self.tracker.init_track(
                     #     meta['pre_dets'] if 'pre_dets' in meta else [])
