@@ -72,6 +72,8 @@ def run(opt):
 
         while ret:
             ret, img = cap.read()
+            if not ret:
+                break
             img = cv2.bitwise_and(img, img, mask=region_mask)
             ret = detector.run(img)
             processed_frames += 1
