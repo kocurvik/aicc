@@ -74,7 +74,6 @@ def run(opt):
             ret, img = cap.read()
             img = cv2.bitwise_and(img, img, mask=region_mask)
             ret = detector.run(img)
-            cv2.waitKey(1)
             processed_frames += 1
 
             remaining_seconds = (total_frames - processed_frames) * (time.time() - init_time) / processed_frames
