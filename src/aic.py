@@ -50,6 +50,7 @@ def run(opt):
         camera_label = int(vid_filename.split('.')[0].split('_')[1])
 
         vid_path = os.path.join(opt.demo, vid_filename)
+        print("vid_path: {}".format(vid_path), file=sys.stderr)
         cap = cv2.VideoCapture(vid_path)
 
         width = int(cap.get(cv2.CAP_PROP_FRAME_WIDTH))
@@ -57,7 +58,6 @@ def run(opt):
 
         region_mask = get_region_mask(camera_label, height, width)
         region_mask = np.where(region_mask, 255, 0).astype(np.uint8)
-        print(region_mask.shape)
 
         tracker = Tracker(opt, init_time, vid_id, camera_label, width, height)
         detector.tracker = tracker
