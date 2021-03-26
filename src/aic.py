@@ -1,5 +1,6 @@
 import time
 import os
+import sys
 
 import cv2
 import numpy as np
@@ -9,8 +10,8 @@ from opts import opts
 from fields.interest import get_mask_movements_heatmaps, get_region_mask
 from utils.tracker import Tracker
 
-import matplotlib
-matplotlib.use('TkAgg')
+# import matplotlib
+# matplotlib.use('TkAgg')
 
 def get_img_transform(height, width, new_size=512):
     ratio = float(new_size) / max([height, width])
@@ -43,7 +44,7 @@ def run(opt):
 
     detector = Detector(opt, None)
 
-    for line in lines[9:]:
+    for line in lines:
         vid_id = line.split(' ')[0]
         vid_filename = line.split(' ')[1]
         camera_label = int(vid_filename.split('.')[0].split('_')[1])
