@@ -76,9 +76,9 @@ def run(opt):
             ret = detector.run(img)
             processed_frames += 1
 
-            remaining_seconds = (total_frames - processed_frames) * (time.time() - init_time) / processed_frames
-
-            print("Frame {}/{} ETA {}".format(processed_frames, total_frames, datetime.timedelta(seconds=(remaining_seconds))), file=sys.stderr)
+            if processed_frames % 100 == 0:
+                remaining_seconds = (total_frames - processed_frames) * (time.time() - init_time) / processed_frames
+                print("Frame {}/{} ETA {}".format(processed_frames, total_frames, datetime.timedelta(seconds=(remaining_seconds))), file=sys.stderr)
             # cnt += 1
             # results[cnt] = ret['results']
 
