@@ -43,7 +43,7 @@ def run(opt):
     total_frames = 185446
 
     with open(os.path.join(opt.demo, 'list_video_id.txt'), 'r') as f:
-        lines = f.readlines()
+        lines = f.read().splitlines()
 
     detector = Detector(opt, None)
 
