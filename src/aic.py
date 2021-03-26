@@ -1,3 +1,4 @@
+import datetime
 import time
 import os
 import sys
@@ -38,6 +39,8 @@ def get_img_transform(height, width, new_size=512):
 def run(opt):
     # opt.debug = max(opt.debug, 1)
     init_time = time.time()
+    processed_frames = 0
+    total_frames = 185446
 
     with open(os.path.join(opt.demo, 'list_video_id.txt'), 'r') as f:
         lines = f.readlines()
@@ -72,6 +75,11 @@ def run(opt):
             img = cv2.bitwise_and(img, img, mask=region_mask)
             ret = detector.run(img)
             cv2.waitKey(1)
+            processed_frames += 1
+
+            remaining_seconds = (total_frames - processed_frames) * (time.time() - init_time) / processed_frames
+
+            print("Frame {}/{} ETA {}".format(processed_frames, total_frames, datetime.timedelta(seconds=(remaining_seconds))), file=sys.stderr)
             # cnt += 1
             # results[cnt] = ret['results']
 
