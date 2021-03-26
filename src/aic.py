@@ -57,6 +57,7 @@ def run(opt):
 
         region_mask = get_region_mask(camera_label, height, width)
         region_mask = np.where(region_mask, 255, 0).astype(np.uint8)
+        print(region_mask.shape)
 
         tracker = Tracker(opt, init_time, vid_id, camera_label, width, height)
         detector.tracker = tracker
@@ -67,6 +68,7 @@ def run(opt):
 
         while ret:
             ret, img = cap.read()
+            print(img.shape)
             img = cv2.bitwise_and(img, img, mask=region_mask)
             ret = detector.run(img)
             cv2.waitKey(1)
