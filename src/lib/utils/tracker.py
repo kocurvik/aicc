@@ -3,9 +3,8 @@ import copy
 
 import numpy as np
 import cv2
-from scipy.stats import linregress
 from sklearn.linear_model import LinearRegression
-from sklearn.utils.linear_assignment_ import linear_assignment
+# from sklearn.utils.linear_assignment_ import linear_assignment
 from fields.interest import get_mask_movements_heatmaps
 
 import matplotlib
@@ -171,12 +170,12 @@ class Tracker(object):
         invalid = ((dist > track_size.reshape(1, M)) + (dist > item_size.reshape(N, 1))) > 0
         dist = dist + invalid * 1e18
 
-        if self.opt.hungarian:
-            item_score = np.array([item['score'] for item in results], np.float32)  # N
-            dist[dist > 1e18] = 1e18
-            matched_indices = linear_assignment(dist)
-        else:
-            matched_indices = greedy_assignment(copy.deepcopy(dist))
+        # if self.opt.hungarian:
+        #     item_score = np.array([item['score'] for item in results], np.float32)  # N
+        #     dist[dist > 1e18] = 1e18
+        #     matched_indices = linear_assignment(dist)
+        # else:
+        matched_indices = greedy_assignment(copy.deepcopy(dist))
         unmatched_dets = [d for d in range(dets.shape[0]) if not (d in matched_indices[:, 0])]
         unmatched_tracks = [d for d in range(tracks.shape[0]) if not (d in matched_indices[:, 1])]
 
