@@ -125,6 +125,10 @@ class Tracker(object):
         corner_positiots_x = np.array([item['bbox'][self.corners[path, 0]] for item in track.items], dtype=np.int32)
         corner_positiots_y = np.array([item['bbox'][self.corners[path, 1]] for item in track.items], dtype=np.int32)
 
+        corner_positiots_x = np.clip(corner_positiots_x, 0, self.width - 1)
+        corner_positiots_y = np.clip(corner_positiots_y, 0, self.height - 1)
+
+
         proportions = self.proportion_heatmaps[path, corner_positiots_y, corner_positiots_x]
 
         if np.max(proportions) < 0.6 or np.max(proportions) - np.min(proportions) < 0.25:
