@@ -90,7 +90,7 @@ def run(opt):
             # cnt += 1
             # results[cnt] = ret['results']
 
-            if opt.demo > 0:
+            if opt.debug > 0:
                 cv2.waitKey(0)
 
 
