@@ -11,8 +11,9 @@ from opts import opts
 from fields.interest import get_mask_movements_heatmaps, get_region_mask
 from utils.tracker import Tracker
 
-# import matplotlib
-# matplotlib.use('TkAgg')
+import matplotlib
+if os.name == 'nt':
+    matplotlib.use('Qt5Agg')
 
 def get_img_transform(height, width, new_size=512):
     ratio = float(new_size) / max([height, width])
@@ -45,9 +46,14 @@ def run(opt):
     with open(os.path.join(opt.demo, 'list_video_id.txt'), 'r') as f:
         lines = f.read().splitlines()
 
+    with open(os.path.join(opt.demo, 'datasetA_vid_stats.txt'), 'r') as f:
+        stats_lines = f.read().splitlines()
+
+    max_frames_list = [int(line.split('\t')[2]) for line in stats_lines[1:]]
+
     detector = Detector(opt, None)
 
-    for line in lines:
+    for line, max_frames in zip(lines[3:], max_frames_list[3:]):
         vid_id = line.split(' ')[0]
         vid_filename = line.split(' ')[1]
         camera_label = int(vid_filename.split('.')[0].split('_')[1])
@@ -63,7 +69,7 @@ def run(opt):
         region_mask = get_region_mask(camera_label, height, width)
         region_mask = np.where(region_mask, 255, 0).astype(np.uint8)
 
-        tracker = Tracker(opt, init_time, vid_id, camera_label, width, height)
+        tracker = Tracker(opt, init_time, vid_id, max_frames, camera_label, width, height)
         detector.tracker = tracker
 
         ret = True
@@ -83,6 +89,8 @@ def run(opt):
                 print("Frame {}/{} ETA {}".format(processed_frames, total_frames, datetime.timedelta(seconds=(remaining_seconds))), file=sys.stderr)
             # cnt += 1
             # results[cnt] = ret['results']
+
+            cv2.waitKey(0)
 
 
 

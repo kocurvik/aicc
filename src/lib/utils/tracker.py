@@ -37,14 +37,15 @@ class Track(object):
 
 
 class Tracker(object):
-    def __init__(self, opt, init_time, vid_id, camera_id, width, height):
+    def __init__(self, opt, init_time, vid_id, max_frames, camera_id, width, height):
         self.opt = opt
         self.init_time = init_time
         self.vid_id = vid_id
         self.width = width
         self.height = height
+        self.max_frames = max_frames
 
-        self.movements, self.corners,self.distance_heatmaps, self.proportion_heatmaps = get_mask_movements_heatmaps(camera_id, height, width)
+        self.movements, self.corners, self.distance_heatmaps, self.proportion_heatmaps = get_mask_movements_heatmaps(camera_id, height, width)
 
         # for i in range(len(self.distance_heatmaps)):
         #     cv2.imshow("distance", self.distance_heatmaps[i]/ np.max(self.distance_heatmaps[i]))
@@ -66,31 +67,24 @@ class Tracker(object):
         results_buses = [item for item in results if item['class'] == 6]
 
         # NMS buses -> trucks
+        bbox_cars = np.array([item['bbox'] for item in results_cars]).reshape(-1, 4)
+        bbox_trucks = np.array([item['bbox'] for item in results_trucks]).reshape(-1, 4)
+        bbox_buses = np.array([item['bbox'] for item in results_buses]).reshape(-1, 4)
 
-        results_trucks_buses = []
-        for item_bus in results_buses:
-            keep = True
-            for item_truck in results_trucks:
-                if iou(item_truck['bbox'], item_bus['bbox']) > 0.8:
-                    keep = False
-                    break
-            if keep:
-                results_trucks_buses.append(item_bus)
-        results_trucks_buses.extend(results_trucks)
+        if len(results_buses) > 0:
+            iou_buses_trucks = iou(bbox_trucks, bbox_buses)
+            good_buses = np.all(iou_buses_trucks < 0.7, axis=0)
+
+            results_trucks.extend([results_buses[i] for i in range(len(results_buses)) if good_buses[i]])
+            bbox_trucks = np.row_stack([bbox_trucks, bbox_buses[good_buses, :]])
 
         # NMS trucks -> cars
-        results = []
-        for item_truck in results_trucks_buses:
-            keep = True
-            for item_car in results_cars:
-                if iou(item_car['bbox'], item_truck['bbox']) > 0.8:
-                    keep = False
-                    break
-            if keep:
-                results.append(item_truck)
-        results.extend(results_cars)
+        if len(results_trucks) > 0:
+            iou_cars_trucks = iou(bbox_cars, bbox_trucks)
+            good_trucks = np.all(iou_cars_trucks < 0.7, axis=0)
+            results_cars.extend([results_trucks[i] for i in range(len(results_trucks)) if good_trucks[i]])
 
-        return results
+        return results_cars
 
     def add_sizes(self, results):
         for item in results:
@@ -128,10 +122,9 @@ class Tracker(object):
         corner_positiots_x = np.clip(corner_positiots_x, 0, self.width - 1)
         corner_positiots_y = np.clip(corner_positiots_y, 0, self.height - 1)
 
-
         proportions = self.proportion_heatmaps[path, corner_positiots_y, corner_positiots_x]
 
-        if np.max(proportions) < 0.6 or np.max(proportions) - np.min(proportions) < 0.25:
+        if np.max(proportions) < 0.6 or np.max(proportions) - np.min(proportions) < 0.25 * min(self.frame_count / 50, 1):
             if self.opt.debug > 0:
                 self.debug_track(positions[:, 0], positions[:, 1], corner_positiots_x, corner_positiots_y, color=(0, 0, 255))
             return
@@ -140,22 +133,28 @@ class Tracker(object):
         weights = ((times - times[0]) / (times[-1] - times[0])) ** 1.5
         regr = LinearRegression()
         # regr.fit(times[:, np.newaxis], proportions, sample_weight=weights)
-        regr.fit(times[-5:, np.newaxis], proportions[-5:])
+        # start_range = (len(times) * 3) // 5
+        # end_range = (len(times) * 9) // 10
+        regr.fit(times[-10: -3].reshape(-1, 1), proportions[-10: -3].reshape(-1, 1))
 
         if self.opt.debug > 1:
             plt.plot(times, proportions)
             plt.plot(times[:, np.newaxis], regr.predict(times[:, np.newaxis]))
             plt.show()
 
-        if regr.coef_ < 0.0:
+        if regr.coef_ <= 0.0:
             return
 
-        projected_last_frame = (1 - regr.intercept_) / regr.coef_
+        projected_last_frame = ((1 - regr.intercept_) / regr.coef_)[0]
+
+        if projected_last_frame > self.max_frames:
+            return
 
         truck_num = sum([item['class'] == 6 or item['class'] == 8 for item in track.items])
-        cls = 2 if truck_num / len(track.frames) > 0.6 else 1
+        cls = 2 if truck_num / len(track.frames) > 0.5 else 1
         gen_time = time.time() - self.init_time
         print('{} {} {} {} {}'.format(gen_time, self.vid_id, np.int32(projected_last_frame[0]), path + 1, cls))
+
         if self.opt.debug > 0:
             self.debug_track(positions[:, 0], positions[:, 1], corner_positiots_x, corner_positiots_y)
 
@@ -164,77 +163,82 @@ class Tracker(object):
 
         results = self.filter_results(results)
         results = self.add_sizes(results)
-        N = len(results)
-        M = len(self.tracks)
 
-        item_size = np.array([item['size'] for item in results])
-        track_size = np.array([track.last()['size'] for track in self.tracks])
+        # item_size = np.array([item['size'] for item in results])
+        # track_size = np.array([track.last()['size'] for track in self.tracks])
+        # dets = np.array([det['ct'] + det['tracking'] for det in results], np.float32)  # N x 2
+        # tracks = np.array([track.last()['ct'] for track in self.tracks], np.float32)  # M x 2
+        # dist = (((tracks.reshape(1, -1, 2) - dets.reshape(-1, 1, 2)) ** 2).sum(axis=2))  # N x M
+        # invalid = ((dist > track_size.reshape(1, M)) + (dist > item_size.reshape(N, 1))) > 0
+        # dist = dist + invalid * 1e18
 
-        dets = np.array([det['ct'] + det['tracking'] for det in results], np.float32)  # N x 2
-        tracks = np.array([track.last()['ct'] for track in self.tracks], np.float32)  # M x 2
-        dist = (((tracks.reshape(1, -1, 2) - dets.reshape(-1, 1, 2)) ** 2).sum(axis=2))  # N x M
+        track_bboxes = np.array([track.last()['bbox'] for track in self.tracks]).reshape(-1, 4)
+        det_bboxes = np.array([item['bbox'] for item in results]).reshape(-1, 4)
+        det_bboxes += np.tile(np.array([item['tracking'] for item in results]), (1, 2)).reshape(-1, 4)
 
-        invalid = ((dist > track_size.reshape(1, M)) + (dist > item_size.reshape(N, 1))) > 0
-        dist = dist + invalid * 1e18
+        ious = iou(track_bboxes, det_bboxes)
+        # print(ious)
 
-        # if self.opt.hungarian:
-        #     item_score = np.array([item['score'] for item in results], np.float32)  # N
-        #     dist[dist > 1e18] = 1e18
-        #     matched_indices = linear_assignment(dist)
-        # else:
-        matched_indices = greedy_assignment(copy.deepcopy(dist))
-        unmatched_dets = [d for d in range(dets.shape[0]) if not (d in matched_indices[:, 0])]
-        unmatched_tracks = [d for d in range(tracks.shape[0]) if not (d in matched_indices[:, 1])]
+        matches = []
+        unmatched_dets = []
+        unmatched_tracks = np.ones(len(self.tracks), dtype=bool)
 
-        if self.opt.hungarian:
-            matches = []
-            for m in matched_indices:
-                if dist[m[0], m[1]] > 1e16:
-                    unmatched_dets.append(m[0])
-                    unmatched_tracks.append(m[1])
-                else:
-                    matches.append(m)
-            matches = np.array(matches).reshape(-1, 2)
+        if len(self.tracks) == 0:
+            unmatched_dets = [i for i in range(len(results))]
         else:
-            matches = matched_indices
+            for j in range(len(results)):
+                i = np.argmax(ious[:, j])
+                if ious[i, j] > 0.1:
+                    matches.append([i, j])
+                    ious[i, :] = 0.0
+                    unmatched_tracks[i] = False
+                else:
+                    unmatched_dets.append(j)
 
-        ret = []
         for m in matches:
-            track = results[m[0]]
-            self.tracks[m[1]].assign(self.frame_count, track)
+            self.tracks[m[0]].assign(self.frame_count, results[m[1]])
 
-        for i in unmatched_dets:
+        for i in reversed(unmatched_dets):
             item = results[i]
             if item['score'] > self.opt.new_thresh:
                 self.id_count += 1
                 track = Track(self.id_count, self.frame_count, item)
                 self.tracks.append(track)
 
-        for i in reversed(unmatched_tracks):
-            track = self.tracks[i]
-            if not track.is_alive(self.frame_count):
-                self.generate_entry(track)
-                del self.tracks[i]
+        for i, val in reversed(list(enumerate(unmatched_tracks))):
+            if val:
+                track = self.tracks[i]
+                if not track.is_alive(self.frame_count):
+                    self.generate_entry(track)
+                    del self.tracks[i]
 
         ret = [track.last() for track in self.tracks if track.is_alive(self.frame_count)]
-
         return ret
 
 
-def iou(bbox1, bbox2):
-    x_left = max(bbox1[0], bbox2[0])
-    y_top = max(bbox1[1], bbox2[1])
-    x_right = min(bbox1[0] + bbox1[2], bbox2[0] + bbox2[2])
-    y_bottom = min(bbox1[1] + bbox1[3], bbox2[1] + bbox2[3])
+def iou(A, B):
+    if len(A) == 0 or len(B) == 0:
+        return np.array([[]]).reshape(len(A), len(B))
 
-    if x_right < x_left or y_bottom < y_top:
-        return 0.0
+    intersections = (np.maximum(0, np.minimum(A[:, np.newaxis, 2:], B[:, 2:]) - np.maximum(A[:, np.newaxis, :2], B[:, :2]))).prod(-1)
+    unions = (A[:, np.newaxis, 2:] - A[:, np.newaxis, :2]).prod(-1) + (B[:, 2:] - B[:, :2]).prod(-1) - intersections
+    return intersections / unions
 
-    intersection_area = (x_right - x_left) * (y_bottom - y_top)
-    last_area = bbox1[2] * bbox1[3]
-    query_area = bbox2[2] * bbox2[3]
 
-    return intersection_area / float(last_area + query_area - intersection_area)
+# def iou(bbox1, bbox2):
+#     x_left = max(bbox1[0], bbox2[0])
+#     y_top = max(bbox1[1], bbox2[1])
+#     x_right = min(bbox1[0] + bbox1[2], bbox2[0] + bbox2[2])
+#     y_bottom = min(bbox1[1] + bbox1[3], bbox2[1] + bbox2[3])
+#
+#     if x_right < x_left or y_bottom < y_top:
+#         return 0.0
+#
+#     intersection_area = (x_right - x_left) * (y_bottom - y_top)
+#     last_area = bbox1[2] * bbox1[3]
+#     query_area = bbox2[2] * bbox2[3]
+#
+#     return intersection_area / float(last_area + query_area - intersection_area)
 
 
 def greedy_assignment(dist):
@@ -243,7 +247,7 @@ def greedy_assignment(dist):
         return np.array(matched_indices, np.int32).reshape(-1, 2)
     for i in range(dist.shape[0]):
         j = dist[i].argmin()
-        if dist[i][j] < 1e16:
-            dist[:, j] = 1e18
+        if dist[i][j] > 0.5:
+            dist[:, j] = 0
             matched_indices.append([i, j])
     return np.array(matched_indices, np.int32).reshape(-1, 2)
