@@ -53,7 +53,7 @@ def run(opt):
 
     detector = Detector(opt, None)
 
-    for line, max_frames in zip(lines[3:], max_frames_list[3:]):
+    for line, max_frames in zip(lines, max_frames_list):
         vid_id = line.split(' ')[0]
         vid_filename = line.split(' ')[1]
         camera_label = int(vid_filename.split('.')[0].split('_')[1])

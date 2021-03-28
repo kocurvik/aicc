@@ -115,6 +115,7 @@ class Tracker(object):
         mean_distances += 1e18 * (proportions[:, 0] > proportions[:, -1])
         std_distances = np.std(distances, axis=-1)
         path = np.argmin(mean_distances + 3 * std_distances)
+        proportions = proportions[path]
 
         corner_positiots_x = np.array([item['bbox'][self.corners[path, 0]] for item in track.items], dtype=np.int32)
         corner_positiots_y = np.array([item['bbox'][self.corners[path, 1]] for item in track.items], dtype=np.int32)
@@ -122,23 +123,26 @@ class Tracker(object):
         corner_positiots_x = np.clip(corner_positiots_x, 0, self.width - 1)
         corner_positiots_y = np.clip(corner_positiots_y, 0, self.height - 1)
 
-        proportions = self.proportion_heatmaps[path, corner_positiots_y, corner_positiots_x]
+        proportions_corners = self.proportion_heatmaps[path, corner_positiots_y, corner_positiots_x]
+        proportions_end = np.argmax(proportions_corners) + 1
+        proportions_corners = proportions_corners[:proportions_end]
+        times = np.array(track.frames)[:proportions_end]
 
-        if np.max(proportions) < 0.6 or np.max(proportions) - np.min(proportions) < 0.25 * min(self.frame_count / 50, 1):
+        if np.max(proportions) < 0.6 or np.max(proportions) - np.min(proportions) < 0.25 * min(self.frame_count / 50, 1) or len(proportions_corners) < 5:
             if self.opt.debug > 0:
                 self.debug_track(positions[:, 0], positions[:, 1], corner_positiots_x, corner_positiots_y, color=(0, 0, 255))
             return
 
-        times = np.array(track.frames)
-        weights = ((times - times[0]) / (times[-1] - times[0])) ** 1.5
+
+        # weights = ((times - times[0]) / (times[-1] - times[0])) ** 1.5
         regr = LinearRegression()
         # regr.fit(times[:, np.newaxis], proportions, sample_weight=weights)
         # start_range = (len(times) * 3) // 5
         # end_range = (len(times) * 9) // 10
-        regr.fit(times[-10: -3].reshape(-1, 1), proportions[-10: -3].reshape(-1, 1))
+        regr.fit(times[-8:].reshape(-1, 1), proportions_corners[-8:].reshape(-1, 1))
 
         if self.opt.debug > 1:
-            plt.plot(times, proportions)
+            plt.plot(times, proportions_corners)
             plt.plot(times[:, np.newaxis], regr.predict(times[:, np.newaxis]))
             plt.show()
 
