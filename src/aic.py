@@ -1,4 +1,5 @@
 import datetime
+import pickle
 import time
 import os
 import sys
@@ -9,7 +10,7 @@ import numpy as np
 from detector import Detector
 from opts import opts
 from fields.interest import get_mask_movements_heatmaps, get_region_mask
-from utils.tracker import Tracker
+from utils.tracker import Tracker, WriterTracker
 
 import matplotlib
 if os.name == 'nt':
@@ -69,26 +70,33 @@ def run(opt):
         region_mask = get_region_mask(camera_label, height, width)
         region_mask = np.where(region_mask, 255, 0).astype(np.uint8)
 
-        tracker = Tracker(opt, init_time, vid_id, max_frames, camera_label, width, height)
+        vid_filename_wo_ext = vid_filename.split('.')[0]
+        tracker_pkl_path = os.path.join(opt.demo, '{}.pkl'.format(vid_filename_wo_ext))
+
+        # tracker = Tracker(opt, init_time, vid_id, max_frames, camera_label, width, height)
+        # results = pickle.load(open(tracker_pkl_path, 'rb'))
+        # for result in results:
+        #     tracker.step(result)
+        # continue
+
+        tracker = WriterTracker(tracker_pkl_path, max_frames)
+
         detector.tracker = tracker
+        detector.reset_tracking()
 
         ret = True
-        # cnt = 0
-        # results = {}
-
         while ret:
             ret, img = cap.read()
             if not ret:
                 break
             img = cv2.bitwise_and(img, img, mask=region_mask)
+
             ret = detector.run(img)
             processed_frames += 1
 
             if processed_frames % 100 == 0:
                 remaining_seconds = (total_frames - processed_frames) * (time.time() - init_time) / processed_frames
                 print("Frame {}/{} ETA {}".format(processed_frames, total_frames, datetime.timedelta(seconds=(remaining_seconds))), file=sys.stderr)
-            # cnt += 1
-            # results[cnt] = ret['results']
 
             if opt.debug > 0:
                 cv2.waitKey(0)

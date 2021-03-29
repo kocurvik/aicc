@@ -1,3 +1,5 @@
+import json
+import pickle
 import time
 import copy
 import os
@@ -218,6 +220,31 @@ class Tracker(object):
 
         ret = [track.last() for track in self.tracks if track.is_alive(self.frame_count)]
         return ret
+
+
+class WriterTracker(object):
+    def __init__(self, json_path, max_frames):
+        self.json_path = json_path
+        self.max_frames = max_frames
+        self.frame_count = 0
+        self.results_list = []
+
+    def step(self, results, public_det=None):
+        self.frame_count += 1
+        filtered_results = [item for item in results if item['class'] in [3, 6, 8]]
+        self.results_list.append(filtered_results)
+
+        if self.frame_count >= self.max_frames:
+            self.save()
+
+        return filtered_results
+
+    def save(self):
+        with open(self.json_path, 'wb') as f:
+            pickle.dump(self.results_list, f)
+
+    def reset(self):
+        pass
 
 
 def iou(A, B):
