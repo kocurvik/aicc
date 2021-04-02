@@ -55,6 +55,8 @@ def run(opt):
     detector = Detector(opt, None)
 
     for line, max_frames in zip(lines, max_frames_list):
+        vid_init_time = time.time()
+
         vid_id = line.split(' ')[0]
         vid_filename = line.split(' ')[1]
         camera_label = int(vid_filename.split('.')[0].split('_')[1])
@@ -73,13 +75,13 @@ def run(opt):
         vid_filename_wo_ext = vid_filename.split('.')[0]
         tracker_pkl_path = os.path.join(opt.demo, '{}.pkl'.format(vid_filename_wo_ext))
 
-        # tracker = Tracker(opt, init_time, vid_id, max_frames, camera_label, width, height)
+        tracker = Tracker(opt, vid_init_time, vid_id, max_frames, camera_label, width, height)
         # results = pickle.load(open(tracker_pkl_path, 'rb'))
         # for result in results:
         #     tracker.step(result)
         # continue
 
-        tracker = WriterTracker(tracker_pkl_path, max_frames)
+        # tracker = WriterTracker(tracker_pkl_path, max_frames)
 
         detector.tracker = tracker
         detector.reset_tracking()
@@ -101,7 +103,8 @@ def run(opt):
             if opt.debug > 0:
                 cv2.waitKey(0)
 
-
+    total_time = time.time() - init_time
+    print("Total run time: {}, {}".format(total_time, datetime.timedelta(seconds=total_time)), file=sys.stderr)
 
 if __name__ == '__main__':
     opt = opts().init()

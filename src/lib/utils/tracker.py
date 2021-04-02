@@ -39,13 +39,15 @@ class Track(object):
 
 
 class Tracker(object):
-    def __init__(self, opt, init_time, vid_id, max_frames, camera_id, width, height):
+    def __init__(self, opt, init_time, vid_id, max_frames, camera_id, width, height, print_stdout=True):
         self.opt = opt
         self.init_time = init_time
         self.vid_id = vid_id
         self.width = width
         self.height = height
         self.max_frames = max_frames
+        self.outputs = []
+        self.print_stdout = print_stdout
 
         self.movements, self.corners, self.distance_heatmaps, self.proportion_heatmaps = get_mask_movements_heatmaps(camera_id, height, width)
 
@@ -62,11 +64,12 @@ class Tracker(object):
         self.id_count = 0
         self.frame_count = 0
         self.tracks = []
+        self.outputs = []
 
     def filter_results(self, results):
-        results_cars = [item for item in results if item['class'] == 3]
-        results_trucks = [item for item in results if item['class'] == 8]
-        results_buses = [item for item in results if item['class'] == 6]
+        results_cars = [item for item in results if item['class'] == 3 and item['score'] > self.opt.track_thresh]
+        results_trucks = [item for item in results if item['class'] == 8 and item['score'] > self.opt.track_thresh]
+        results_buses = [item for item in results if item['class'] == 6 and item['score'] > self.opt.track_thresh]
 
         # NMS buses -> trucks
         bbox_cars = np.array([item['bbox'] for item in results_cars]).reshape(-1, 4)
@@ -104,7 +107,7 @@ class Tracker(object):
         cv2.waitKey(0)
 
     def generate_entry(self, track):
-        if len(track.frames) < 5:
+        if len(track.frames) < 15:
             return
 
         positions = np.array([item['ct'] for item in track.items]).astype(np.int32)
@@ -130,7 +133,7 @@ class Tracker(object):
         proportions_corners = proportions_corners[:proportions_end]
         times = np.array(track.frames)[:proportions_end]
 
-        if np.max(proportions) < 0.6 or np.max(proportions) - np.min(proportions) < 0.25 * min(self.frame_count / 50, 1) or len(proportions_corners) < 5:
+        if np.max(proportions) < 0.3 or np.max(proportions) - np.min(proportions) < 0.25 * min(self.frame_count / 50, 1) or len(proportions_corners) < 5:
             if self.opt.debug > 0:
                 self.debug_track(positions[:, 0], positions[:, 1], corner_positiots_x, corner_positiots_y, color=(0, 0, 255))
             return
@@ -159,7 +162,12 @@ class Tracker(object):
         truck_num = sum([item['class'] == 6 or item['class'] == 8 for item in track.items])
         cls = 2 if truck_num / len(track.frames) > 0.5 else 1
         gen_time = time.time() - self.init_time
-        print('{} {} {} {} {}'.format(gen_time, self.vid_id, np.int32(projected_last_frame[0]), path + 1, cls))
+
+        output = '{} {} {} {} {}'.format(gen_time, self.vid_id, np.int32(projected_last_frame[0]), path + 1, cls)
+        if self.print_stdout:
+            print(output)
+        else:
+            self.outputs.append(output)
 
         if self.opt.debug > 0:
             self.debug_track(positions[:, 0], positions[:, 1], corner_positiots_x, corner_positiots_y)
@@ -168,15 +176,7 @@ class Tracker(object):
         self.frame_count += 1
 
         results = self.filter_results(results)
-        results = self.add_sizes(results)
-
-        # item_size = np.array([item['size'] for item in results])
-        # track_size = np.array([track.last()['size'] for track in self.tracks])
-        # dets = np.array([det['ct'] + det['tracking'] for det in results], np.float32)  # N x 2
-        # tracks = np.array([track.last()['ct'] for track in self.tracks], np.float32)  # M x 2
-        # dist = (((tracks.reshape(1, -1, 2) - dets.reshape(-1, 1, 2)) ** 2).sum(axis=2))  # N x M
-        # invalid = ((dist > track_size.reshape(1, M)) + (dist > item_size.reshape(N, 1))) > 0
-        # dist = dist + invalid * 1e18
+        # results = self.add_sizes(results)
 
         track_bboxes = np.array([track.last()['bbox'] for track in self.tracks]).reshape(-1, 4)
         det_bboxes = np.array([item['bbox'] for item in results]).reshape(-1, 4)
@@ -253,7 +253,7 @@ def iou(A, B):
 
     intersections = (np.maximum(0, np.minimum(A[:, np.newaxis, 2:], B[:, 2:]) - np.maximum(A[:, np.newaxis, :2], B[:, :2]))).prod(-1)
     unions = (A[:, np.newaxis, 2:] - A[:, np.newaxis, :2]).prod(-1) + (B[:, 2:] - B[:, :2]).prod(-1) - intersections
-    return intersections / unions
+    return intersections / (unions + 1e-12)
 
 
 # def iou(bbox1, bbox2):
