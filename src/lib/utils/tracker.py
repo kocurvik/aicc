@@ -160,7 +160,7 @@ class Tracker(object):
             return
 
         truck_num = sum([item['class'] == 6 or item['class'] == 8 for item in track.items])
-        cls = 2 if truck_num / len(track.frames) > 0.5 else 1
+        cls = 2 if truck_num / len(track.frames) > 0.3 else 1
         gen_time = time.time() - self.init_time
 
         output = '{} {} {} {} {}'.format(gen_time, self.vid_id, np.int32(projected_last_frame[0]), path + 1, cls)
