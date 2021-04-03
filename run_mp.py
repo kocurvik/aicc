@@ -4,8 +4,8 @@ import os
 import torch.multiprocessing as mp
 
 from res.video_params import get_video_filenames
-from serial_pipeline import run_single_video_serial
-from threaded_pipeline import run_single_video_threaded
+from run_single_video_serial import run_single_video_serial
+from run_single_video_threaded import run_single_video_threaded
 
 
 def parse_args():
