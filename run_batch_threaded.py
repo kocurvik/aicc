@@ -58,8 +58,7 @@ class ReaderManager(object):
         return self.n >= self.max_frames
 
 class TrackerManager(object):
-    def __init__(self, vid_list, model_loading_time):
-        init_time = time.time() - model_loading_time
+    def __init__(self, vid_list, init_time):
         self.init_time = init_time
 
         video_id, camera_id, max_frames, width, height = vid_list[1:]
@@ -147,7 +146,8 @@ def tracker_thread_fn(q_in, q_times, multi_vid_list, model_loading_time, batch_s
 
             if manager.is_done():
                 if next_video_id < len(multi_vid_list):
-                    tracker_managers[i] = TrackerManager(multi_vid_list[next_video_id], time.time() - model_loading_time)
+                    init_time = q_times.get()
+                    tracker_managers[i] = TrackerManager(multi_vid_list[next_video_id], init_time - model_loading_time)
                     next_video_id += 1
                 else:
                     del tracker_managers[i]
