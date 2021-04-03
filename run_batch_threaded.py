@@ -80,8 +80,14 @@ class TrackerManager(object):
         return self.n >= self.max_frames
 
 
-def reader_thread_fn(q_out, batch_size, path, multi_vid_list):
-    vid_managers = [ReaderManager(path, vid_list) for vid_list in multi_vid_list[:batch_size]]
+def reader_thread_fn(q_out, q_times, batch_size, path, multi_vid_list):
+    vid_managers = []
+    for vid_list in multi_vid_list[:batch_size]:
+        q_times.put(time.time())
+        vid_managers.append(ReaderManager(path, vid_list))
+
+
+
     next_video_id = len(vid_managers)
     while len(vid_managers) > 0:
         imgs = [manager.get_img() for manager in vid_managers]
@@ -117,8 +123,12 @@ def model_thread_fn(q_in, q_out):
         q_out.put(dets)
 
 
-def tracker_thread_fn(q_in, multi_vid_list, model_loading_time, batch_size, debug=0):
-    tracker_managers = [TrackerManager(vid_list, time.time() - model_loading_time) for vid_list in multi_vid_list[:batch_size]]
+def tracker_thread_fn(q_in, q_times, multi_vid_list, model_loading_time, batch_size, debug=0):
+    tracker_managers = []
+    for vid_list in multi_vid_list[:batch_size]:
+        init_time = q_times.get()
+        tracker_managers.append(TrackerManager(vid_list, init_time - model_loading_time))
+
     next_video_id = len(tracker_managers)
 
     thread_init_time = time.time()
@@ -160,10 +170,11 @@ def run(path, batch_size=4, debug=0):
 
     q_in_model = Queue(10)
     q_out_model = Queue(10)
+    q_times = Queue(batch_size + 10)
 
-    reader_thread = Thread(target=reader_thread_fn, args=(q_in_model, batch_size, path, multi_vid_list))
+    reader_thread = Thread(target=reader_thread_fn, args=(q_in_model, q_times, batch_size, path, multi_vid_list))
     model_thread = Thread(target=model_thread_fn, args=(q_in_model, q_out_model))
-    tracker_thread = Thread(target=tracker_thread_fn, args=(q_out_model, multi_vid_list, model_loading_time, batch_size, debug))
+    tracker_thread = Thread(target=tracker_thread_fn, args=(q_out_model, q_times, multi_vid_list, model_loading_time, batch_size, debug))
 
     reader_thread.start()
     model_thread.start()
