@@ -2,6 +2,9 @@ import argparse
 import os
 from multiprocessing import Pool
 
+import torch.multiprocessing as mp
+mp.set_start_method('spawn')
+
 from res.video_params import get_video_filenames
 from threaded_pipeline import run_single_video_threaded
 
