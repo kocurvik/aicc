@@ -17,12 +17,13 @@ from utils.tracker import Tracker
 def parse_args():
     parser = argparse.ArgumentParser()
     parser.add_argument('-d', '--debug', type=int, default=0, help='debug level')
+    parser.add_argument('-fp', '--full-precision', action='store_true', default=False, help='disable automatic mixed precision and us fp32')
     parser.add_argument('path')
     args = parser.parse_args()
     return args
 
 
-def run_single_video_serial(path, debug=0):
+def run_single_video_serial(path, debug=0, full_precision=False):
     init_time = time.time()
     if debug >= 1:
         print("Starting for video: {}".format(path), file=sys.stderr)
@@ -60,10 +61,10 @@ def run_single_video_serial(path, debug=0):
             pre_img = img
 
         with torch.no_grad():
-            # with torch.cuda.amp.autocast(enabled=True):
-            out = model(img, pre_img, None)[-1]
-            out = sigmoid_output(out)
-            dets = generic_decode(out)
+            with torch.cuda.amp.autocast(enabled=not full_precision):
+                out = model(img, pre_img, None)[-1]
+                out = sigmoid_output(out)
+                dets = generic_decode(out)
 
         pre_img = img
 
@@ -83,4 +84,4 @@ def run_single_video_serial(path, debug=0):
 
 if __name__ == '__main__':
     args = parse_args()
-    run_single_video_serial(args.path, args.debug)
+    run_single_video_serial(args.path, args.debug, args.full_precision)
