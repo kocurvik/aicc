@@ -125,13 +125,16 @@ def model_thread_fn(q_in, q_out):
 
 def tracker_thread_fn(q_in, q_times, multi_vid_list, model_loading_time, batch_size, debug=0):
     tracker_managers = []
+    thread_init_time = None
     for vid_list in multi_vid_list[:batch_size]:
         init_time = q_times.get()
+        if thread_init_time is None:
+            thread_init_time = init_time - model_loading_time
         tracker_managers.append(TrackerManager(vid_list, init_time - model_loading_time))
 
     next_video_id = len(tracker_managers)
 
-    thread_init_time = time.time()
+
     processed_frames = 0
 
     while len(tracker_managers) > 0:
