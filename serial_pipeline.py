@@ -60,6 +60,7 @@ def run_single_video_serial(path, debug=0):
             pre_img = img
 
         with torch.no_grad():
+            # with torch.cuda.amp.autocast(enabled=True):
             out = model(img, pre_img, None)[-1]
             out = sigmoid_output(out)
             dets = generic_decode(out)
