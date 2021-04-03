@@ -2,7 +2,6 @@ import argparse
 import os
 
 import torch.multiprocessing as mp
-# mp.set_start_method('spawn', force=True)
 
 from res.video_params import get_video_filenames
 from threaded_pipeline import run_single_video_threaded
@@ -17,9 +16,11 @@ def parse_args():
     return args
 
 def run(path, debug=0, pool_size=4):
+    ctx = mp.get_context("spawn")
+
     args =[(os.path.join(path, vid_filename), debug) for vid_filename in get_video_filenames()]
 
-    with mp.Pool(pool_size) as p:
+    with ctx.Pool(pool_size) as p:
         p.starmap(run_single_video_threaded, args)
 
 if __name__ == '__main__':
