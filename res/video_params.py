@@ -23,5 +23,16 @@ def get_video_params(path):
     d = VIDEO_PARAM_DICT[filename]
     return d
 
+
 def get_video_filenames():
     return sorted(VIDEO_PARAM_DICT.keys())
+
+
+def get_sorted_list():
+    out = []
+    for key, value in VIDEO_PARAM_DICT.items():
+        line = [key]
+        line.extend(value)
+        out.append(line)
+    return sorted(out, key=lambda item: item[3])
+

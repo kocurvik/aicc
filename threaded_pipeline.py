@@ -19,6 +19,7 @@ from utils.tracker import Tracker
 def parse_args():
     parser = argparse.ArgumentParser()
     parser.add_argument('-d', '--debug', type=int, default=0, help='debug level')
+    parser.add_argument('-fp', '--full-precision', action='store_true', default=False, help='disable automatic mixed precision and us fp32')
     parser.add_argument('path')
     args = parser.parse_args()
     return args
@@ -40,7 +41,7 @@ def video_reader_thread_fn(q_out, path):
         q_out.put(img)
 
 
-def model_thread_fn(q_in, q_out, path):
+def model_thread_fn(q_in, q_out, path, full_precision=False):
     video_id, camera_id, max_frames, width, height = get_video_params(path)
     model = create_model()
     model = load_model(model, 'checkpoints/coco_tracking.pth')
@@ -57,9 +58,10 @@ def model_thread_fn(q_in, q_out, path):
             pre_img = img
 
         with torch.no_grad():
-            out = model(img, pre_img, None)[-1]
-            out = sigmoid_output(out)
-            dets = generic_decode(out)
+            with torch.cuda.amp.autocast(enabled=not full_precision):
+                out = model(img, pre_img, None)[-1]
+                out = sigmoid_output(out)
+                dets = generic_decode(out)
 
         pre_img = img
 
@@ -86,7 +88,7 @@ def tracker_thread_fn(q_in, init_time, path, debug=0):
             print("At frame {} FPS {}".format(i + 1, FPS), file=sys.stderr)
 
 
-def run_single_video_threaded(path, debug=0):
+def run_single_video_threaded(path, debug=0, full_precision=False):
     init_time = time.time()
     if debug >= 1:
         print("Starting for video: {}".format(path), file=sys.stderr)
@@ -95,7 +97,7 @@ def run_single_video_threaded(path, debug=0):
     q_out_model = Queue(10)
 
     reader_thread = Thread(target=video_reader_thread_fn, args=(q_in_model, path))
-    model_thread = Thread(target=model_thread_fn, args=(q_in_model, q_out_model, path))
+    model_thread = Thread(target=model_thread_fn, args=(q_in_model, q_out_model, path, full_precision))
     tracker_thread = Thread(target=tracker_thread_fn, args=(q_out_model, init_time, path, debug))
 
     reader_thread.start()
@@ -113,4 +115,4 @@ def run_single_video_threaded(path, debug=0):
 
 if __name__ == '__main__':
     args = parse_args()
-    run_single_video_threaded(args.path, args.debug)
+    run_single_video_threaded(args.path, args.debug, args.full_precision)
