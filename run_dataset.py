@@ -1,5 +1,7 @@
 import argparse
 import os
+import sys
+import time
 
 from res.video_params import get_video_filenames
 from run_single_video_threaded import run_single_video_threaded
@@ -15,9 +17,12 @@ def parse_args():
 
 
 def run(path, debug=0, full_precision=False):
+    init_time = time.time()
     for vid_filename in get_video_filenames():
         vid_path = os.path.join(path, vid_filename)
         run_single_video_threaded(vid_path, debug=debug, full_precision=full_precision)
+
+    print("Total time: {}".format(time.time() - init_time), file=sys.stderr)
 
 
 if __name__ == '__main__':
