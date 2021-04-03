@@ -97,6 +97,7 @@ def reader_thread_fn(q_out, q_times, batch_size, path, multi_vid_list):
         for i, manager in reversed(list(enumerate(vid_managers))):
             if manager.is_done():
                 if next_video_id < len(multi_vid_list):
+                    q_times.put(time.time())
                     vid_managers[i] = ReaderManager(path, multi_vid_list[next_video_id])
                     next_video_id += 1
                 else:
