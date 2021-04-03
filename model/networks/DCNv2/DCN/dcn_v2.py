@@ -7,6 +7,7 @@ import math
 import torch
 from torch import nn
 from torch.autograd import Function
+from torch.cuda.amp import custom_fwd
 from torch.nn.modules.utils import _pair
 from torch.autograd.function import once_differentiable
 
@@ -115,6 +116,7 @@ class DCN(DCNv2):
         self.conv_offset_mask.weight.data.zero_()
         self.conv_offset_mask.bias.data.zero_()
 
+    @custom_fwd(cast_inputs=torch.float32)
     def forward(self, input):
         out = self.conv_offset_mask(input)
         o1, o2, mask = torch.chunk(out, 3, dim=1)
