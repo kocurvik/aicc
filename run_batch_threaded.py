@@ -188,6 +188,8 @@ def run(path, batch_size=4, debug=0):
     model_thread.join()
     tracker_thread.join()
 
+    print("Total time: {}".format(time.time() - pre_model_load), file=sys.stderr)
+
 
 if __name__ == '__main__':
     args = parse_args()
