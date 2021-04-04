@@ -204,7 +204,7 @@ def get_postprocess_trans(height, width):
     return trans
 
 
-def post_process(dets, trans):
+def post_process(dets, trans, track_thresh=0.2):
     if not ('scores' in dets):
         return [{}], [{}]
     ret = []
@@ -212,11 +212,13 @@ def post_process(dets, trans):
     for i in range(len(dets['scores'])):
         preds = []
         for j in range(len(dets['scores'][i])):
-            if dets['scores'][i][j] < 0.2:
+            if dets['scores'][i][j] < track_thresh:
                 break
             item = {}
-            item['score'] = dets['scores'][i][j]
             item['class'] = int(dets['clses'][i][j]) + 1
+            # if item['class'] not in [3, 6, 8]:
+            #     continue
+            item['score'] = dets['scores'][i][j]
             item['ct'] = transform_preds_with_trans((dets['cts'][i][j]).reshape(1, 2), trans).reshape(2)
 
             if 'tracking' in dets:
