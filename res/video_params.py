@@ -34,5 +34,5 @@ def get_sorted_list():
         line = [key]
         line.extend(value)
         out.append(line)
-    return sorted(out, key=lambda item: item[3])
+    return sorted(out, key=lambda item: item[3], reverse=True)
 
