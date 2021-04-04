@@ -23,22 +23,15 @@ def parse_args():
     parser = argparse.ArgumentParser()
     parser.add_argument('-d', '--debug', type=int, default=0, help='debug level')
     parser.add_argument('-b', '--batch_size', type=int, default=4, help='batch_size')
-    parser.add_argument('-r', '--load_to_ram', action='store_true', default=False, help='load videos to RAM')
     parser.add_argument('path', help='path to the dataset folder')
     args = parser.parse_args()
     return args
 
 
 class ReaderManager(object):
-    def __init__(self, path, vid_list, load_to_ram):
+    def __init__(self, path, vid_list):
         vid_filename = vid_list[0]
         video_path = os.path.join(path, vid_filename)
-
-        if load_to_ram:
-            tempdir = tempfile.TemporaryDirectory(dir='/dev/shm')
-            copypath = os.path.join(tempdir.name, vid_filename)
-            shutil.copy(video_path, copypath)
-            video_path = copypath
 
         self.cap = cv2.VideoCapture(video_path)
 
@@ -92,11 +85,11 @@ class TrackerManager(object):
         self.tracker.finalize()
 
 
-def reader_thread_fn(q_out, q_times, batch_size, path, multi_vid_list, load_to_ram=False):
+def reader_thread_fn(q_out, q_times, batch_size, path, multi_vid_list):
     vid_managers = []
     for vid_list in multi_vid_list[:batch_size]:
         q_times.put(time.time())
-        vid_managers.append(ReaderManager(path, vid_list, load_to_ram))
+        vid_managers.append(ReaderManager(path, vid_list))
 
     next_video_id = len(vid_managers)
     while len(vid_managers) > 0:
@@ -172,7 +165,7 @@ def tracker_thread_fn(q_in, q_times, multi_vid_list, model_loading_time, batch_s
             print("At frame {} FPS {}".format(processed_frames, FPS), file=sys.stderr)
 
 
-def run(path, batch_size=4, debug=0, load_to_ram = False):
+def run(path, batch_size=4, debug=0):
     pre_model_load = time.time()
 
     model = create_model()
@@ -188,7 +181,7 @@ def run(path, batch_size=4, debug=0, load_to_ram = False):
     q_out_model = Queue(10)
     q_times = Queue(batch_size + 10)
 
-    reader_thread = Thread(target=reader_thread_fn, args=(q_in_model, q_times, batch_size, path, multi_vid_list, load_to_ram))
+    reader_thread = Thread(target=reader_thread_fn, args=(q_in_model, q_times, batch_size, path, multi_vid_list))
     model_thread = Thread(target=model_thread_fn, args=(q_in_model, q_out_model))
     tracker_thread = Thread(target=tracker_thread_fn, args=(q_out_model, q_times, multi_vid_list, model_loading_time, batch_size, debug))
 
@@ -205,4 +198,4 @@ def run(path, batch_size=4, debug=0, load_to_ram = False):
 
 if __name__ == '__main__':
     args = parse_args()
-    run(args.path, args.batch_size, args.debug, args.load_to_ram)
+    run(args.path, args.batch_size, args.debug)
