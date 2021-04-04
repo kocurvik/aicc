@@ -20,6 +20,8 @@ def parse_args():
     parser = argparse.ArgumentParser()
     parser.add_argument('-d', '--debug', type=int, default=0, help='debug level')
     parser.add_argument('-fp', '--full-precision', action='store_true', default=False, help='disable automatic mixed precision and us fp32')
+    parser.add_argument('-n', '--new_thresh', type=float, default=0.4, help='threshold for new track')
+    parser.add_argument('-t', '--track_thresh', type=float, default=0.4, help='threshold for new bbox for existing track')
     parser.add_argument('path')
     args = parser.parse_args()
     return args
@@ -96,11 +98,11 @@ def model_thread_fn(q_in, q_out, path, full_precision=False):
         q_out.put(dets)
 
 
-def tracker_thread_fn(q_in, init_time, path, debug=0):
+def tracker_thread_fn(q_in, init_time, path, debug=0, new_thresh=0.4, track_thresh=0.2):
     video_id, camera_id, max_frames, width, height = get_video_params(path)
 
     postprocess_trans = get_postprocess_trans(height, width)
-    tracker = Tracker(init_time, video_id, max_frames, camera_id, width, height)
+    tracker = Tracker(init_time, video_id, max_frames, camera_id, width, height, new_thresh=new_thresh, track_thresh=track_thresh)
 
     tracker_times = []
 
@@ -111,7 +113,7 @@ def tracker_thread_fn(q_in, init_time, path, debug=0):
         for k in dets:
             dets[k] = dets[k].detach().cpu().numpy()
 
-        dets = post_process(dets, postprocess_trans)[0]
+        dets = post_process(dets, postprocess_trans, track_thresh=track_thresh)[0]
         tracker.step(dets)
 
         if debug > 0 and i % 100 == 99:
@@ -124,7 +126,7 @@ def tracker_thread_fn(q_in, init_time, path, debug=0):
               file=sys.stderr)
 
 
-def run_single_video_threaded(path, debug=0, full_precision=False):
+def run_single_video_threaded(path, debug=0, full_precision=False, new_thresh=0.4, track_thresh=0.2):
     init_time = time.time()
     if debug >= 1:
         print("Starting for video: {}".format(path), file=sys.stderr)
@@ -134,7 +136,7 @@ def run_single_video_threaded(path, debug=0, full_precision=False):
 
     reader_thread = Thread(target=video_reader_thread_fn, args=(q_in_model, path))
     model_thread = Thread(target=model_thread_fn, args=(q_in_model, q_out_model, path, full_precision))
-    tracker_thread = Thread(target=tracker_thread_fn, args=(q_out_model, init_time, path, debug))
+    tracker_thread = Thread(target=tracker_thread_fn, args=(q_out_model, init_time, path, debug, new_thresh, track_thresh))
 
     reader_thread.start()
     model_thread.start()
@@ -150,4 +152,4 @@ def run_single_video_threaded(path, debug=0, full_precision=False):
 
 if __name__ == '__main__':
     args = parse_args()
-    run_single_video_threaded(args.path, args.debug, args.full_precision)
+    run_single_video_threaded(args.path, args.debug, args.full_precision, new_thresh=args.new_thresh, track_thresh=args.track_thresh)
