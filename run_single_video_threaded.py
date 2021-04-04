@@ -67,6 +67,8 @@ def model_thread_fn(q_in, q_out, path, full_precision=False):
 
     pre_img = None
     gpu_times = []
+    model_times = []
+    decode_times = []
 
     for i in range(max_frames):
         img = q_in.get()
@@ -80,13 +82,13 @@ def model_thread_fn(q_in, q_out, path, full_precision=False):
         with torch.no_grad():
             with torch.cuda.amp.autocast(enabled=not full_precision):
                 out = model(img, pre_img, None)[-1]
+                model_times.append(time.time() - get_time)
+                print("Frame {} GPU model time last: {}, mean: {}, median: {}".format(i, model_times[-1], np.mean(model_times), np.median(model_times)), file=sys.stderr)
                 out = sigmoid_output(out)
                 dets = generic_decode(out)
-
+                decode_times.append(time.time() - get_time)
+                print("Frame {} GPU decode time last: {}, mean: {}, median: {}".format(i, decode_times[-1], np.mean(decode_times), np.median(decode_times)), file=sys.stderr)
         pre_img = img
-
-        for k in dets:
-            dets[k] = dets[k].detach().cpu().numpy()
 
         gpu_times.append(time.time() - get_time)
         print("Frame {} GPU time last: {}, mean: {}, median: {}".format(i, gpu_times[-1], np.mean(gpu_times), np.median(gpu_times)), file=sys.stderr)
@@ -105,6 +107,10 @@ def tracker_thread_fn(q_in, init_time, path, debug=0):
     for i in range(max_frames):
         dets = q_in.get()
         get_time = time.time()
+
+        for k in dets:
+            dets[k] = dets[k].detach().cpu().numpy()
+
         dets = post_process(dets, postprocess_trans)[0]
         tracker.step(dets)
 
