@@ -77,6 +77,7 @@ class TrackerManager(object):
     def process_output(self, dets):
         dets = post_process(dets, self.postprocess_trans)[0]
         self.tracker.step(dets)
+        self.n += 1
 
     def is_done(self):
         return self.n >= self.max_frames
@@ -137,7 +138,6 @@ def tracker_thread_fn(q_in, q_times, multi_vid_list, model_loading_time, batch_s
         tracker_managers.append(TrackerManager(vid_list, init_time - model_loading_time))
 
     next_video_id = len(tracker_managers)
-
 
     processed_frames = 0
 
