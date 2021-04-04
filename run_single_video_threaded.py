@@ -85,6 +85,9 @@ def model_thread_fn(q_in, q_out, path, full_precision=False):
 
         pre_img = img
 
+        for k in dets:
+            dets[k] = dets[k].detach().cpu().numpy()
+
         gpu_times.append(time.time() - get_time)
         print("Frame {} GPU time last: {}, mean: {}, median: {}".format(i, gpu_times[-1], np.mean(gpu_times), np.median(gpu_times)), file=sys.stderr)
 
@@ -102,8 +105,6 @@ def tracker_thread_fn(q_in, init_time, path, debug=0):
     for i in range(max_frames):
         dets = q_in.get()
         get_time = time.time()
-        for k in dets:
-            dets[k] = dets[k].detach().cpu().numpy()
         dets = post_process(dets, postprocess_trans)[0]
         tracker.step(dets)
 
