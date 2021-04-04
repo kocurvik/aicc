@@ -36,28 +36,12 @@ def video_reader_thread_fn(q_out, path):
     region_mask = get_region_mask(camera_id, height, width)
     region_mask = np.where(region_mask, 255, 0).astype(np.uint8)
 
-    reader_times = []
-    mask_times = []
-    preprocess_times = []
-
     for i in range(max_frames):
-        get_time = time.time()
-
         ret, frame = cap.read()
         frame = cv2.bitwise_and(frame, frame, mask=region_mask)
-        mask_times.append(time.time() - get_time)
-        print("Frame {} masking reader time last: {}, mean: {}, median: {}".format(i, mask_times[-1], np.mean(mask_times), np.median(mask_times)),
-              file=sys.stderr)
         img = preprocess_function(frame)
-        preprocess_times.append(time.time() - get_time)
-        print("Frame {} preprocess reader time last: {}, mean: {}, median: {}".format(i, preprocess_times[-1], np.mean(preprocess_times), np.median(preprocess_times)),
-              file=sys.stderr)
-        reader_times.append(time.time() - get_time)
-        print("Frame {} Reader time last: {}, mean: {}, median: {}".format(i, reader_times[-1], np.mean(reader_times), np.median(reader_times)),
-              file=sys.stderr)
 
         q_out.put(img)
-
 
 
 def model_thread_fn(q_in, q_out, path, full_precision=False):
@@ -68,13 +52,9 @@ def model_thread_fn(q_in, q_out, path, full_precision=False):
     model.eval()
 
     pre_img = None
-    gpu_times = []
-    model_times = []
-    decode_times = []
 
     for i in range(max_frames):
         img = q_in.get()
-        get_time = time.time()
 
         img = torch.from_numpy(img).to(torch.device('cuda'))
 
@@ -84,16 +64,9 @@ def model_thread_fn(q_in, q_out, path, full_precision=False):
         with torch.no_grad():
             with torch.cuda.amp.autocast(enabled=not full_precision):
                 out = model(img, pre_img, None)[-1]
-                model_times.append(time.time() - get_time)
-                print("Frame {} GPU model time last: {}, mean: {}, median: {}".format(i, model_times[-1], np.mean(model_times), np.median(model_times)), file=sys.stderr)
                 out = sigmoid_output(out)
                 dets = generic_decode(out)
-                decode_times.append(time.time() - get_time)
-                print("Frame {} GPU decode time last: {}, mean: {}, median: {}".format(i, decode_times[-1], np.mean(decode_times), np.median(decode_times)), file=sys.stderr)
         pre_img = img
-
-        gpu_times.append(time.time() - get_time)
-        print("Frame {} GPU time last: {}, mean: {}, median: {}".format(i, gpu_times[-1], np.mean(gpu_times), np.median(gpu_times)), file=sys.stderr)
 
         q_out.put(dets)
 
@@ -103,8 +76,6 @@ def tracker_thread_fn(q_in, init_time, path, debug=0, new_thresh=0.4, track_thre
 
     postprocess_trans = get_postprocess_trans(height, width)
     tracker = Tracker(init_time, video_id, max_frames, camera_id, width, height, new_thresh=new_thresh, track_thresh=track_thresh)
-
-    tracker_times = []
 
     for i in range(max_frames):
         dets = q_in.get()
@@ -120,11 +91,6 @@ def tracker_thread_fn(q_in, init_time, path, debug=0, new_thresh=0.4, track_thre
             frame_time = time.time() - init_time
             FPS = (i + 1) / frame_time
             print("At frame {} FPS {}".format(i + 1, FPS), file=sys.stderr)
-
-        tracker_times.append(time.time() - get_time)
-        print("Frame {} Tracker time last: {}, mean: {}, median: {}".format(i, tracker_times[-1], np.mean(tracker_times), np.median(tracker_times)),
-              file=sys.stderr)
-
 
 def run_single_video_threaded(path, debug=0, full_precision=False, new_thresh=0.4, track_thresh=0.2):
     init_time = time.time()
