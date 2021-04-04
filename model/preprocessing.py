@@ -29,11 +29,18 @@ def get_img_transform(height, width, new_size=512):
     #     img = img.transpose(2, 0, 1).reshape(1, 3, new_size, new_size)
     #     return img
 
+    # mg = np.array(np.meshgrid(range(new_size), range(new_size)))
+    # mg = np.reshape(np.transpose(mg, (1, 2, 0)), (new_size * new_size, 2))
+    # mg = np.array([[point] for point in mg]).astype(np.float32)
+    # A = np.linalg.inv(np.row_stack([trans_input, np.array([[0, 0, 1]])]))
+    # map = np.reshape(cv2.perspectiveTransform(mg, A), (new_size, new_size, 2))
+
     def _preprocess_f(img):
         img = cv2.warpAffine(img, trans_input, (new_size, new_size), flags=cv2.INTER_LINEAR)
+        # img = cv2.remap(img, map, None, cv2.INTER_LINEAR, borderMode=cv2.BORDER_CONSTANT)
         img = ((img / 255. - mean) / std).astype(np.float32)
 
-        img = img.transpose(2, 0, 1).reshape(1, 3, new_size, new_size)
+        img = img.transpose(2, 0, 1)[np.newaxis, ...]
         return img
 
     return _preprocess_f

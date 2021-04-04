@@ -47,12 +47,10 @@ def video_reader_thread_fn(q_out, path):
         print("Frame {} masking reader time last: {}, mean: {}, median: {}".format(i, mask_times[-1], np.mean(mask_times), np.median(mask_times)),
               file=sys.stderr)
         img = preprocess_function(frame)
-        img = torch.from_numpy(img).to(torch.device('cuda'))
         preprocess_times.append(time.time() - get_time)
         print("Frame {} preprocess reader time last: {}, mean: {}, median: {}".format(i, preprocess_times[-1], np.mean(preprocess_times), np.median(preprocess_times)),
               file=sys.stderr)
-
-
+        img = torch.from_numpy(img).to(torch.device('cuda'))
         reader_times.append(time.time() - get_time)
         print("Frame {} Reader time last: {}, mean: {}, median: {}".format(i, reader_times[-1], np.mean(reader_times), np.median(reader_times)),
               file=sys.stderr)
