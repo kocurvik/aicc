@@ -211,6 +211,10 @@ class Tracker(object):
         ret = [track.last() for track in self.tracks if track.is_alive(self.frame_count)]
         return ret
 
+    def finalize(self):
+        for track in self.tracks:
+            self.generate_entry(track)
+
 
 class WriterTracker(object):
     def __init__(self, json_path, max_frames):

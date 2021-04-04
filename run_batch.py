@@ -65,6 +65,9 @@ class VideoManager(object):
     def is_done(self):
         return self.n >= self.max_frames
 
+    def finalize(self):
+        self.tracker.finalize()
+
 
 def run(path, batch_size=4, debug=0):
     pre_model_load = time.time()
@@ -103,6 +106,7 @@ def run(path, batch_size=4, debug=0):
             manager.process_output(single_dets)
 
             if manager.is_done():
+                manager.finalize()
                 if next_video_id < len(multi_vid_list):
                     vid_managers[i] = VideoManager(path, multi_vid_list[next_video_id], model_loading_time)
                     next_video_id += 1

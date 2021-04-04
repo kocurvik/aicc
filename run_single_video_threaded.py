@@ -92,6 +92,8 @@ def tracker_thread_fn(q_in, init_time, path, debug=0, new_thresh=0.4, track_thre
             FPS = (i + 1) / frame_time
             print("At frame {} FPS {}".format(i + 1, FPS), file=sys.stderr)
 
+    tracker.finalize()
+
 def run_single_video_threaded(path, debug=0, full_precision=False, new_thresh=0.4, track_thresh=0.2):
     init_time = time.time()
     if debug >= 1:

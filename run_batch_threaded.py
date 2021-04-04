@@ -88,6 +88,9 @@ class TrackerManager(object):
     def is_done(self):
         return self.n >= self.max_frames
 
+    def finalize(self):
+        self.tracker.finalize()
+
 
 def reader_thread_fn(q_out, q_times, batch_size, path, multi_vid_list, load_to_ram=False):
     vid_managers = []
@@ -157,6 +160,7 @@ def tracker_thread_fn(q_in, q_times, multi_vid_list, model_loading_time, batch_s
             manager.process_output(single_dets)
 
             if manager.is_done():
+                manager.finalize()
                 if next_video_id < len(multi_vid_list):
                     init_time = q_times.get()
                     tracker_managers[i] = TrackerManager(multi_vid_list[next_video_id], init_time - model_loading_time)

@@ -79,6 +79,8 @@ def run_single_video_serial(path, debug=0, full_precision=False):
             FPS = (i + 1) / frame_time
             print("At frame {} FPS {}".format(i + 1, FPS), file=sys.stderr)
 
+    tracker.finalize()
+
     if debug >= 1:
         print("Finished video: {}".format(path), file=sys.stderr)
 
