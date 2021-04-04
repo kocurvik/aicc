@@ -37,7 +37,7 @@ class ReaderManager(object):
         if load_to_ram:
             tempdir = tempfile.TemporaryDirectory(dir='/dev/shm')
             copypath = os.path.join(tempdir.name, vid_filename)
-            shutil.copy(args.video, copypath)
+            shutil.copy(video_path, copypath)
             video_path = copypath
 
         self.cap = cv2.VideoCapture(video_path)
