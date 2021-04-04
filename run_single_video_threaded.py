@@ -34,11 +34,21 @@ def video_reader_thread_fn(q_out, path):
     region_mask = get_region_mask(camera_id, height, width)
     region_mask = np.where(region_mask, 255, 0).astype(np.uint8)
 
+    reader_times = []
+
     for i in range(max_frames):
+        get_time = time.time()
+
         ret, frame = cap.read()
         frame = cv2.bitwise_and(frame, frame, mask=region_mask)
         img = preprocess_function(frame)
+        img = torch.from_numpy(img).to(torch.device('cuda'))
+        reader_times.append(time.time() - get_time)
+        print("Frame {} Reader time last: {}, mean: {}, median: {}".format(i, reader_times[-1], np.mean(reader_times), np.median(reader_times)),
+              file=sys.stderr)
+
         q_out.put(img)
+
 
 
 def model_thread_fn(q_in, q_out, path, full_precision=False):
@@ -49,10 +59,11 @@ def model_thread_fn(q_in, q_out, path, full_precision=False):
     model.eval()
 
     pre_img = None
+    gpu_times = []
 
     for i in range(max_frames):
         img = q_in.get()
-        img = torch.from_numpy(img).to(torch.device('cuda'))
+        get_time = time.time()
 
         if pre_img is None:
             pre_img = img
@@ -65,8 +76,8 @@ def model_thread_fn(q_in, q_out, path, full_precision=False):
 
         pre_img = img
 
-        for k in dets:
-            dets[k] = dets[k].detach().cpu().numpy()
+        gpu_times.append(time.time() - get_time)
+        print("Frame {} GPU time last: {}, mean: {}, median: {}".format(i, gpu_times[-1], np.mean(gpu_times), np.median(gpu_times)), file=sys.stderr)
 
         q_out.put(dets)
 
@@ -77,8 +88,13 @@ def tracker_thread_fn(q_in, init_time, path, debug=0):
     postprocess_trans = get_postprocess_trans(height, width)
     tracker = Tracker(init_time, video_id, max_frames, camera_id, width, height)
 
+    tracker_times = []
+
     for i in range(max_frames):
         dets = q_in.get()
+        get_time = time.time()
+        for k in dets:
+            dets[k] = dets[k].detach().cpu().numpy()
         dets = post_process(dets, postprocess_trans)[0]
         tracker.step(dets)
 
@@ -86,6 +102,10 @@ def tracker_thread_fn(q_in, init_time, path, debug=0):
             frame_time = time.time() - init_time
             FPS = (i + 1) / frame_time
             print("At frame {} FPS {}".format(i + 1, FPS), file=sys.stderr)
+
+        tracker_times.append(time.time() - get_time)
+        print("Frame {} Tracker time last: {}, mean: {}, median: {}".format(i, tracker_times[-1], np.mean(tracker_times), np.median(tracker_times)),
+              file=sys.stderr)
 
 
 def run_single_video_threaded(path, debug=0, full_precision=False):
@@ -110,7 +130,6 @@ def run_single_video_threaded(path, debug=0, full_precision=False):
 
     if debug >= 1:
         print("Finished video: {}".format(path), file=sys.stderr)
-
 
 
 if __name__ == '__main__':
