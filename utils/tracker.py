@@ -212,9 +212,8 @@ class Tracker(object):
         return ret
 
     def finalize(self):
-        # for track in self.tracks:
-        #     self.generate_entry(track)
-        ...
+        for track in self.tracks:
+            self.generate_entry(track)
 
 
 class WriterTracker(object):
