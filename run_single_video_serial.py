@@ -37,22 +37,28 @@ def run_single_video_serial(path, debug=0, full_precision=False):
     model.to(torch.device('cuda'))
     model.eval()
 
-    tracker = Tracker(init_time, video_id, max_frames, camera_id, width, height)
+    tracker = Tracker(init_time, video_id, max_frames, camera_id, width, height, debug=debug)
 
     preprocess_function = get_img_transform(height, width, new_size=512)
     postprocess_trans = get_postprocess_trans(height, width)
     region_mask = get_region_mask(camera_id, height, width)
     region_mask = np.where(region_mask, 255, 0).astype(np.uint8)
 
+    if debug > 2:
+        cv2.imwrite("mask.png", region_mask)
+
     pre_img = None
 
     for i in range(max_frames):
         ret, frame = cap.read()
-        frame = cv2.bitwise_and(frame, frame, mask=region_mask)
         if debug >= 2:
             cv2.imshow("Frame", frame)
             cv2.waitKey(1)
-            tracker.frame = frame
+            tracker.frame = np.copy(frame)
+
+        frame = cv2.bitwise_and(frame, frame, mask=region_mask)
+
+
 
         img = preprocess_function(frame)
         img = torch.from_numpy(img).to(torch.device('cuda'))

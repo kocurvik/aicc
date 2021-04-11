@@ -11,7 +11,7 @@ def parse_args():
     parser = argparse.ArgumentParser()
     parser.add_argument('-d', '--debug', type=int, default=0, help='debug level')
     parser.add_argument('-n', '--new_thresh', type=float, default=0.4, help='threshold for new track')
-    parser.add_argument('-t', '--track_thresh', type=float, default=0.4, help='threshold for new bbox for existing track')
+    parser.add_argument('-t', '--track_thresh', type=float, default=0.2, help='threshold for new bbox for existing track')
     parser.add_argument('-fp', '--full-precision', action='store_true', default=False, help='disable automatic mixed precision and us fp32')
     parser.add_argument('path')
     args = parser.parse_args()
