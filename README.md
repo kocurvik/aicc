@@ -1,4 +1,4 @@
-# The code for the Comenius University submission to the Track 1 of the 2021 AI City Challange
+# Code for the Comenius University submission to the Track 1 of the 2021 AI City Challange
 
 ## Acknowledgments
 
