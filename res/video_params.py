@@ -1,4 +1,7 @@
 import os
+import sys
+
+import cv2
 
 VIDEO_PARAM_DICT = {'cam_1.mp4': [1, 1, 3000, 1280, 960], 'cam_1_dawn.mp4': [2, 1, 3000, 1280, 960],
                     'cam_1_rain.mp4': [3, 1, 2961, 1280, 960], 'cam_2.mp4': [4, 2, 18000, 1280, 720],
@@ -18,9 +21,16 @@ VIDEO_PARAM_DICT = {'cam_1.mp4': [1, 1, 3000, 1280, 960], 'cam_1_dawn.mp4': [2, 
                     'cam_20.mp4': [31, 20, 3000, 1920, 1080]}
 
 
-def get_video_params(path):
+def get_video_params(path, check_frame_count=True):
     filename = os.path.basename(os.path.normpath(path))
     d = VIDEO_PARAM_DICT[filename]
+    if check_frame_count:
+        cap = cv2.VideoCapture(path)
+        frame_count = int(cap.get(cv2.CAP_PROP_FRAME_COUNT))
+        if d[2] != frame_count:
+            print("Mismatch in saved frame count and cap frame count", file=sys.stderr)
+            d[2] = frame_count
+
     return d
 
 
@@ -28,10 +38,17 @@ def get_video_filenames():
     return sorted(VIDEO_PARAM_DICT.keys())
 
 
-def get_sorted_list():
+def get_sorted_list(path=None):
     out = []
     for key, value in VIDEO_PARAM_DICT.items():
         line = [key]
+        if path is not None:
+            cap = cv2.VideoCapture(os.path.join(path, key))
+            frame_count = int(cap.get(cv2.CAP_PROP_FRAME_COUNT))
+            if value[2] != frame_count:
+                print("Mismatch in saved frame count and cap frame count", file=sys.stderr)
+                value[2] = frame_count
+
         line.extend(value)
         out.append(line)
     return sorted(out, key=lambda item: item[3], reverse=True)

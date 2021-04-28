@@ -79,7 +79,7 @@ def run(path, batch_size=4, debug=0):
 
     model_loading_time = time.time() - pre_model_load
 
-    multi_vid_list = get_sorted_list()
+    multi_vid_list = get_sorted_list(path=path)
     vid_managers = [VideoManager(path, vid_list, model_loading_time) for vid_list in multi_vid_list[:batch_size]]
 
     next_video_id = len(vid_managers)

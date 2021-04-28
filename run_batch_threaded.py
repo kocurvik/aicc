@@ -175,7 +175,7 @@ def run(path, batch_size=4, debug=0):
     del model
 
     model_loading_time = time.time() - pre_model_load
-    multi_vid_list = get_sorted_list()
+    multi_vid_list = get_sorted_list(path=path)
 
     q_in_model = Queue(10)
     q_out_model = Queue(10)
