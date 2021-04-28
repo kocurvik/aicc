@@ -93,13 +93,15 @@ class Tracker(object):
 
         return results_cars
 
-    def debug_track(self, pos_x, pos_y, corner_x, corner_y, color=(0, 255, 0)):
+    def debug_track(self, pos_x, pos_y, corner_x, corner_y, color=(0, 255, 0), save=False):
         vis = np.copy(self.frame)
         for i in range(len(pos_x)):
-            vis = cv2.circle(vis, (pos_x[i], pos_y[i]), 5, color=color)
-            vis = cv2.circle(vis, (corner_x[i], corner_y[i]), 3, color=color, thickness=-1)
+            vis = cv2.circle(vis, (pos_x[i], pos_y[i]), 9, color=(0, 255, 0), thickness=-1)
+            vis = cv2.circle(vis, (corner_x[i], corner_y[i]), 9, color=(0, 0, 255), thickness=-1)
 
         cv2.imshow("Track debug", vis)
+        if save:
+            cv2.imwrite("track.png", vis)
         cv2.waitKey(0)
 
     def generate_entry(self, track):
@@ -140,6 +142,9 @@ class Tracker(object):
         if self.debug > 1:
             plt.plot(times, proportions_corners)
             plt.plot(times[:, np.newaxis], regr.predict(times[:, np.newaxis]))
+            if self.debug > 2:
+                print(times, proportions_corners)
+                print(times[:, np.newaxis], regr.predict(times[:, np.newaxis]))
             plt.show()
 
         if regr.coef_ <= 0.0:
@@ -160,7 +165,11 @@ class Tracker(object):
 
         self.outputs.append(output)
         if self.debug > 0:
-            self.debug_track(positions[:, 0], positions[:, 1], corner_positiots_x, corner_positiots_y)
+            if self.debug > 2:
+                self.debug_track(positions[:, 0], positions[:, 1], corner_positiots_x, corner_positiots_y, save=True)
+            else:
+                self.debug_track(positions[:, 0], positions[:, 1], corner_positiots_x, corner_positiots_y)
+
 
     def step(self, results):
         self.frame_count += 1
