@@ -25,6 +25,8 @@ cd model/networks/DCNv2
 python setup.py build develop
 ```
 
+The model should be downloaded from the CenterTrack [model zoo](https://github.com/xingyizhou/CenterTrack/blob/master/readme/MODEL_ZOO.md). Specifically [the MS COCO tracking model](https://drive.google.com/open?id=1tJCEJmdtYIh8VuN8CClGNws3YO7QGd40). Place the coco_tracking.pth file into the checkpoints directory.
+
 ## Running the code
 
 To run on a single video use:
