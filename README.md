@@ -35,6 +35,11 @@ To run on a single video use:
 python run_single_video_threaded.py /path/to/video.mp4
 ```
 
+You can also try to use the serial version (slower):
+```shell script
+python run_single_video_threaded.py /path/to/video.mp4
+```
+
 To run the on the whole dataset in batched form run:
 ```shell script
 python run_batch_threaded.py -b 2 /path/to/AIC21_Track1_Vehicle_Counting/Dataset_A
