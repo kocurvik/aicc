@@ -44,3 +44,20 @@ To run the on the whole dataset in batched form run:
 ```shell script
 python run_batch_threaded.py -b 2 /path/to/AIC21_Track1_Vehicle_Counting/Dataset_A
 ```
+
+## Citation
+
+If you find this code useful please consider citing our work:
+
+```
+@inproceedings{aicc2021comenius,
+  title={Multi-Class Multi-Movement Vehicle Counting Based on CenterTrack},
+  author={Kocur, Viktor and Ft\'{a}\v{c}nik, Milan},
+  booktitle={Proceedings of the IEEE/CVF Conference on Computer Vision and Pattern Recognition Workshops},
+  year={2021},
+  month={June},
+  pages = {4009-4015},
+  address={Virtual},
+  publisher={IEEE}
+}
+```
