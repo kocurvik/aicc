@@ -56,8 +56,6 @@ If you find this code useful please consider citing our work:
   booktitle={Proceedings of the IEEE/CVF Conference on Computer Vision and Pattern Recognition (CVPR) Workshops},
   year={2021},
   month={June},
-  pages = {4009-4015},
-  address={Virtual},
-  publisher={IEEE}
+  pages = {4009-4015}
 }
 ```
